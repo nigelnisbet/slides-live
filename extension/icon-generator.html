@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SlidesLive Icon Generator</title>
+  <style>
+    body {
+      margin: 40px;
+      font-family: Arial, sans-serif;
+    }
+    .icon-container {
+      display: inline-block;
+      margin: 20px;
+      text-align: center;
+    }
+    .icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border-radius: 25%;
+      position: relative;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    .icon-16 { width: 16px; height: 16px; }
+    .icon-48 { width: 48px; height: 48px; }
+    .icon-128 { width: 128px; height: 128px; }
+
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.4) 20%, rgba(255, 255, 255, 0.15) 40%, transparent 70%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    /* 16x16 icon */
+    .icon-16 .bubble1 { width: 8px; height: 8px; top: 2px; left: 2px; }
+    .icon-16 .bubble2 { width: 5px; height: 5px; bottom: 2px; right: 2px; }
+
+    /* 48x48 icon */
+    .icon-48 .bubble1 { width: 24px; height: 24px; top: 8px; left: 6px; }
+    .icon-48 .bubble2 { width: 16px; height: 16px; bottom: 8px; right: 6px; }
+    .icon-48 .bubble3 { width: 12px; height: 12px; top: 12px; right: 10px; }
+
+    /* 128x128 icon */
+    .icon-128 .bubble1 { width: 60px; height: 60px; top: 20px; left: 18px; }
+    .icon-128 .bubble2 { width: 42px; height: 42px; bottom: 22px; right: 16px; }
+    .icon-128 .bubble3 { width: 32px; height: 32px; top: 32px; right: 26px; }
+
+    .instructions {
+      margin-top: 40px;
+      padding: 20px;
+      background: #f0f9ff;
+      border-left: 4px solid #3b82f6;
+      border-radius: 8px;
+    }
+    .instructions h2 {
+      margin-top: 0;
+      color: #3b82f6;
+    }
+    .instructions code {
+      background: #e0f2fe;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>SlidesLive Chrome Extension Icons</h1>
+
+  <div class="icon-container">
+    <div class="icon icon-16">
+      <div class="bubble bubble1"></div>
+      <div class="bubble bubble2"></div>
+    </div>
+    <div>16x16</div>
+  </div>
+
+  <div class="icon-container">
+    <div class="icon icon-48">
+      <div class="bubble bubble1"></div>
+      <div class="bubble bubble2"></div>
+      <div class="bubble bubble3"></div>
+    </div>
+    <div>48x48</div>
+  </div>
+
+  <div class="icon-container">
+    <div class="icon icon-128">
+      <div class="bubble bubble1"></div>
+      <div class="bubble bubble2"></div>
+      <div class="bubble bubble3"></div>
+    </div>
+    <div>128x128</div>
+  </div>
+
+  <div class="instructions">
+    <h2>How to Generate Icons:</h2>
+    <p><strong>Option 1: Screenshot (Quick)</strong></p>
+    <ol>
+      <li>Use your browser's screenshot tool to capture each icon at exact pixel dimensions</li>
+      <li>Save as PNG files: <code>icon16.png</code>, <code>icon48.png</code>, <code>icon128.png</code></li>
+      <li>Place them in <code>extension/public/icons/</code></li>
+    </ol>
+
+    <p><strong>Option 2: Use Browser DevTools (Best Quality)</strong></p>
+    <ol>
+      <li>Right-click each icon → Inspect</li>
+      <li>In DevTools Console, paste this for each size:
+        <pre style="background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto;">
+// For 16x16:
+const canvas = document.createElement('canvas');
+canvas.width = 16; canvas.height = 16;
+const ctx = canvas.getContext('2d');
+const icon = document.querySelector('.icon-16');
+// Draw manually or use html2canvas library
+
+// For 48x48 and 128x128, adjust width/height accordingly
+        </pre>
+      </li>
+    </ol>
+
+    <p><strong>Option 3: Use Figma/Canva (Professional)</strong></p>
+    <ol>
+      <li>Create artboards: 16x16, 48x48, 128x128</li>
+      <li>Background: Blue gradient (#3b82f6 to #2563eb)</li>
+      <li>Add white bubble circles with gradient/highlights as shown</li>
+      <li>Export as PNG</li>
+    </ol>
+  </div>
+
+</body>
+</html>

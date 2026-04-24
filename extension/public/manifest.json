@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "SlidesLive - Interactive Google Slides",
+  "version": "0.1.0",
+  "description": "Add live polls, quizzes, and Q&A to your Google Slides presentations. Students join via QR code!",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://docs.google.com/presentation/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://docs.google.com/presentation/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "SlidesLive"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
