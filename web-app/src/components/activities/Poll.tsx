@@ -70,7 +70,7 @@ export const Poll: React.FC<PollProps> = ({ activity, results }) => {
         <div className="space-y-4 mb-6">
           {activity.options.map((option, index) => {
             const isSelected = selectedOptions.includes(index);
-            const votes = results?.votes?.[index] || 0;
+            const votes = results?.responses?.[index] || 0;
             const percentage = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
 
             return (

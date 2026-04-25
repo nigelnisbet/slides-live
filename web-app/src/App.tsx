@@ -46,7 +46,7 @@ const ActivityRouter: React.FC = () => {
 };
 
 const WaitingContent: React.FC = () => {
-  const { currentActivity, currentResults, sessionCode, participantId, participantName, feedbackEnabled, sessionEnded, connected } = useSocket();
+  const { currentActivity, currentResults, sessionCode, participantId, participantName, feedbackEnabled, sessionEnded } = useSocket();
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const navigate = useNavigate();

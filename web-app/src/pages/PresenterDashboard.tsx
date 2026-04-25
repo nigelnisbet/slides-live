@@ -14,7 +14,6 @@ import { SessionCodeBadge } from '../components/SessionCodeBadge';
 // SlidesLive brand colors
 const primaryBlue = '#3b82f6';
 const primaryBlueDark = '#2563eb';
-const accentColor = '#10b981';
 
 export const PresenterDashboard: React.FC = () => {
   const { code } = useParams<{ code: string }>();
@@ -114,7 +113,7 @@ export const PresenterDashboard: React.FC = () => {
         resultsComponent = (
           <PollResults
             activity={currentActivity as any}
-            sessionCode={code || ''}
+            results={currentResults as any}
           />
         );
         break;
@@ -122,7 +121,7 @@ export const PresenterDashboard: React.FC = () => {
         resultsComponent = (
           <QuizResults
             activity={currentActivity as any}
-            sessionCode={code || ''}
+            results={currentResults as any}
           />
         );
         break;
