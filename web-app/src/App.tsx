@@ -4,6 +4,7 @@ import { JoinSession } from './pages/JoinSession';
 import { PersonalSessionJoin } from './pages/PersonalSessionJoin';
 import { WaitingScreen } from './pages/WaitingScreen';
 import { PresenterDashboard } from './pages/PresenterDashboard';
+import { PresenterCompact } from './pages/PresenterCompact';
 import { ActivityBuilder } from './pages/ActivityBuilder';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Poll } from './components/activities/Poll';
@@ -38,6 +39,7 @@ const ActivityRouter: React.FC = () => {
       <Route path="/conv-tool/:name" element={<PersonalSessionJoin />} />
       <Route path="/waiting" element={<WaitingContent />} />
       <Route path="/presenter/:code" element={<PresenterDashboard />} />
+      <Route path="/presenter-compact/:code" element={<PresenterCompact />} />
       <Route path="/builder" element={<ActivityBuilder />} />
       <Route path="/admin" element={<AdminDashboard />} />
       <Route path="*" element={<Navigate to="/join" replace />} />

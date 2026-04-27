@@ -200,10 +200,27 @@ const Popup: React.FC = () => {
       </div>
 
       <button
+        style={styles.compactButton}
+        onClick={() => {
+          const width = 400;
+          const height = 600;
+          const left = window.screen.width - width - 50;
+          const top = 50;
+          window.open(
+            `https://slides-live.com/presenter-compact/${sessionInfo.sessionCode}`,
+            'SlidesLiveCompact',
+            `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`
+          );
+        }}
+      >
+        📊 Open Live Stats
+      </button>
+
+      <button
         style={styles.dashboardButton}
         onClick={() => window.open(`https://slides-live.com/presenter/${sessionInfo.sessionCode}`, '_blank')}
       >
-        Open Presenter Dashboard
+        Open Full Dashboard
       </button>
 
       <button
@@ -278,10 +295,10 @@ const styles = {
     cursor: 'pointer',
     transition: 'background-color 0.2s',
   },
-  dashboardButton: {
+  compactButton: {
     width: '100%',
     padding: '12px 24px',
-    backgroundColor: '#28a745',
+    backgroundColor: '#3b82f6',
     color: 'white',
     border: 'none',
     borderRadius: '6px',
@@ -289,6 +306,19 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer',
     marginTop: '16px',
+    transition: 'background-color 0.2s',
+  },
+  dashboardButton: {
+    width: '100%',
+    padding: '10px 24px',
+    backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    fontSize: '13px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    marginTop: '8px',
     transition: 'background-color 0.2s',
   },
   endButton: {
