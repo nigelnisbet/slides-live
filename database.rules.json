@@ -1,0 +1,43 @@
+{
+  "rules": {
+    "sessions": {
+      "$sessionCode": {
+        ".read": true,
+        ".write": true,
+        "participants": {
+          "$participantId": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        "responses": {
+          "$activityId": {
+            ".read": true,
+            ".write": true
+          }
+        },
+        "feedback": {
+          "$feedbackId": {
+            ".read": true,
+            ".write": true
+          }
+        }
+      }
+    },
+    "presentations": {
+      "$presentationId": {
+        ".read": true,
+        "config": {
+          ".read": true,
+          ".write": "auth != null || root.child('presentations').child($presentationId).child('config').child('ownerId').val() == data.child('ownerId').val()"
+        }
+      }
+    },
+    "builderUsers": {
+      "$userId": {
+        ".read": true,
+        ".write": true
+      }
+    }
+  }
+}
