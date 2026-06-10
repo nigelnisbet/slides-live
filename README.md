@@ -46,12 +46,19 @@ slides-live/
 
 ## 🔗 Links
 
-- Domain: slides-live.com (or slideslive.io)
-- Firebase: [TBD - create project]
-- Chrome Web Store: [TBD - publish extension]
+- Domain: slides-live.com (connected to Firebase Hosting)
+- Firebase: slideslive-prod
+- Chrome Web Store: [TBD - not yet published]
+
+## 🌐 Live
+
+- **Site:** [slides-live.com](https://slides-live.com)
+- Extension and web app are built and deployed; production Firebase security rules are live
+
+See [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md) for what's shipped and what's next.
 
 ---
 
-**Status:** 🏗️ In Development
+**Status:** 🟢 MVP Live - working on freemium logic and launch prep
 **Started:** April 2026
 **Forked from:** interactive-presentations (MIND Education internal project)

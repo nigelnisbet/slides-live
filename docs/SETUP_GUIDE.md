@@ -84,7 +84,7 @@ Example config:
 We'll copy the core code from your existing project and clean it up.
 
 ```bash
-cd "/Volumes/G-DRIVE with Thunderbolt 1/projects/slides-live"
+cd "/Users/nigelnisbet/Desktop/Projects/slides-live"
 
 # We'll do this step by step with Claude's help
 # Don't run these commands yet - they're placeholders
@@ -174,7 +174,7 @@ npm run dev
 2. Go to `chrome://extensions`
 3. Enable "Developer mode" (top right)
 4. Click "Load unpacked"
-5. Select `/Volumes/G-DRIVE with Thunderbolt 1/projects/slides-live/extension/dist`
+5. Select `/Users/nigelnisbet/Desktop/Projects/slides-live/extension/dist`
 
 ---
 
