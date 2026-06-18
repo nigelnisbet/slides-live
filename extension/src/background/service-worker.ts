@@ -227,6 +227,11 @@ async function createSession(presentationId: string) {
 
     console.log('[SlidesLive] Session created:', { code, sessionId });
 
+    notifyTabs(presentationId, {
+      type: 'SESSION_ACTIVE',
+      data: { sessionCode: code, presentationId, qrCode: currentQRCode },
+    });
+
     return {
       success: true,
       sessionId,
@@ -285,6 +290,10 @@ async function handleSlideChange(slideData: { indexh: number; indexv: number }) 
 async function endSession() {
   console.log('[SlidesLive] Ending session');
 
+  if (currentSessionCode && currentPresentationId) {
+    notifyTabs(currentPresentationId, { type: 'SESSION_ENDED' });
+  }
+
   if (currentSessionCode) {
     try {
       // First, set status to 'ended' so clients can disconnect gracefully
@@ -330,9 +339,25 @@ function getSessionInfo() {
     sessionId: currentSessionId,
     sessionCode: currentSessionCode,
     qrCode: currentQRCode,
+    presentationId: currentPresentationId,
     participantCount,
     connected: currentSessionCode !== null,
   };
+}
+
+// Tell any open Slides tabs for this presentation that a session just
+// started/ended, so the content script can offer/hide the floating-stats
+// button. Broadcasting via chrome.tabs (not chrome.runtime.sendMessage)
+// because the popup's button click isn't a user gesture in the Slides
+// tab's own document - the content script needs to show its own in-page
+// button for the presenter to click there instead.
+async function notifyTabs(presentationId: string, message: Record<string, unknown>) {
+  const tabs = await chrome.tabs.query({ url: 'https://docs.google.com/presentation/*' });
+  for (const tab of tabs) {
+    if (tab.id && tab.url?.includes(presentationId)) {
+      chrome.tabs.sendMessage(tab.id, message).catch(() => {});
+    }
+  }
 }
 
 // Message handler

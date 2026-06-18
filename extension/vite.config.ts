@@ -48,10 +48,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     rollupOptions: {
+      // content-script.ts is built separately (see vite.content.config.ts) -
+      // it can't share ES-module chunks with these entries, since
+      // content_scripts (unlike the "type":"module" background worker)
+      // can't load via `import` at all and must be one self-contained file.
       input: {
         popup: resolve(__dirname, 'src/popup/index.html'),
         background: resolve(__dirname, 'src/background/service-worker.ts'),
-        content: resolve(__dirname, 'src/content/content-script.ts'),
       },
       output: {
         entryFileNames: '[name].js',

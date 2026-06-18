@@ -5,7 +5,7 @@
   "description": "SlidesLive Chrome Extension - Add interactive polls and quizzes to Google Slides",
   "scripts": {
     "dev": "vite build --watch --mode development",
-    "build": "vite build"
+    "build": "vite build && vite build --config vite.content.config.ts"
   },
   "dependencies": {
     "firebase": "^10.8.0",

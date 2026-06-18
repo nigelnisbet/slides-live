@@ -4,6 +4,16 @@
  * Detects slide changes in Google Slides presentations.
  * Works in edit mode by watching the filmstrip.
  */
+import { initThumbnailBadges } from './thumbnail-badges';
+import { initActivityEditor, openActivityEditorForSlide } from './activity-editor';
+import {
+  initGoLiveButton,
+  removeGoLiveButton,
+  showStartPipButton,
+  hideStartPipButton,
+  hideEndSessionButton,
+  isPipActive,
+} from './pip-stats';
 
 interface SlideInfo {
   slideIndex: number;
@@ -24,8 +34,13 @@ function getPresentationId(): string | null {
 
 // Check if in presentation mode
 function isInPresentationMode(): boolean {
-  return window.location.pathname.includes('/present') ||
-         window.location.href.includes('localpresent');
+  // Path-segment match, not substring - every Slides URL contains
+  // "/presentation/", which trivially (and wrongly) matched a plain
+  // `.includes('/present')` check too, since "presentation" starts with
+  // "present". That made this return true on every page, including the
+  // normal edit view.
+  const segments = window.location.pathname.split('/');
+  return segments.includes('present') || window.location.href.includes('localpresent');
 }
 
 // Get slide ID from URL (hash or query param)
@@ -47,6 +62,30 @@ function getSlideIdFromUrl(): string | null {
   }
 
   return null;
+}
+
+// Get slide index by matching the URL's slide object id against the
+// filmstrip's SVG group ids. Discovered June 2026: each thumbnail's
+// background group is id="filmstrip-slide-{N}-{objectId}-bg" (the segment
+// between the index and "-bg" varies per slide, but the object id from the
+// URL hash always appears somewhere in the matching group's id). This is
+// the current Slides editor markup and the most reliable method available -
+// try it before the older class-name-based heuristics below, which were
+// written against a `.punch-filmstrip-thumbnail` markup that no longer
+// appears to exist (kept as fallback in case Google reverts or A/B tests).
+function getSlideIndexFromFilmstripIds(): number {
+  const urlSlideId = getSlideIdFromUrl();
+  if (!urlSlideId || urlSlideId === 'p') return urlSlideId === 'p' ? 0 : -1;
+
+  const groups = document.querySelectorAll('g[id^="filmstrip-slide-"]');
+  for (let i = 0; i < groups.length; i++) {
+    const el = groups[i];
+    if (el.id.includes(urlSlideId)) {
+      const m = el.id.match(/^filmstrip-slide-(\d+)-/);
+      if (m) return parseInt(m[1], 10);
+    }
+  }
+  return -1;
 }
 
 // Get slide index from filmstrip by finding selected thumbnail
@@ -144,19 +183,26 @@ function getSlideIndexByUrlId(): number {
 
 // Main detection function
 function detectCurrentSlideIndex(): number {
-  // Method 1: Direct filmstrip selection (most reliable)
-  let index = getSlideIndexFromFilmstrip();
+  // Method 1: URL slide id matched against current filmstrip SVG group ids
+  // (most reliable against the current Slides editor markup)
+  let index = getSlideIndexFromFilmstripIds();
   if (index >= 0) {
     return index;
   }
 
-  // Method 2: Match URL slide ID to filmstrip
+  // Method 2: Direct filmstrip selection (older markup, kept as fallback)
+  index = getSlideIndexFromFilmstrip();
+  if (index >= 0) {
+    return index;
+  }
+
+  // Method 3: Match URL slide ID to filmstrip (older markup, kept as fallback)
   index = getSlideIndexByUrlId();
   if (index >= 0) {
     return index;
   }
 
-  // Method 3: Parse "p" format slide IDs
+  // Method 4: Parse "p" format slide IDs
   const slideId = getSlideIdFromUrl();
   if (slideId === 'p') {
     return 0;
@@ -174,7 +220,8 @@ function detectCurrentSlideIndex(): number {
 
 // Get total slide count
 function getTotalSlides(): number {
-  return document.querySelectorAll('.punch-filmstrip-thumbnail').length;
+  const current = document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]').length;
+  return current > 0 ? current : document.querySelectorAll('.punch-filmstrip-thumbnail').length;
 }
 
 // Detect current slide
@@ -342,7 +389,33 @@ function init() {
     }
 
     setupObservers();
+
+    // On-slide features only make sense in the editor (filmstrip + slide
+    // canvas), not in Present mode.
+    if (!isPresenting) {
+      initThumbnailBadges(presentationId, (idx) => openActivityEditorForSlide(presentationId, idx));
+      initActivityEditor(presentationId, detectCurrentSlideIndex);
+    }
   }, 1000);
+
+  // "Go Live" is the default, always-visible button - one click creates a
+  // session AND starts the floating stats window. The only time we show
+  // the older two-step "Start Floating Stats" fallback instead is when a
+  // session is already active for this presentation (e.g. page reload
+  // mid-session) - there's no session left to create, but PiP still needs
+  // a fresh click to satisfy the user-activation requirement. Either way,
+  // this must happen before Present is clicked, or the PiP window won't
+  // composite above fullscreen until a fullscreen toggle forces a
+  // re-layer - see pip-stats.ts.
+  if (!isPresenting) {
+    chrome.runtime.sendMessage({ type: 'GET_SESSION_INFO' }, (response) => {
+      if (response?.connected && response.presentationId === presentationId && !isPipActive()) {
+        showStartPipButton(response.sessionCode, response.qrCode);
+      } else if (!isPipActive()) {
+        initGoLiveButton(presentationId);
+      }
+    });
+  }
 
   // Notify background
   chrome.runtime.sendMessage({
@@ -354,6 +427,28 @@ function init() {
     },
   }).catch(() => {});
 }
+
+// React to session lifecycle events broadcast from the background service
+// worker. Most of the time "Go Live" already created the session itself
+// (same click, no broadcast needed) - this listener mainly covers the
+// fallback popup flow: a session started elsewhere, so swap "Go Live" for
+// the "click to start floating stats" fallback instead.
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'SESSION_ACTIVE') {
+    const presentationId = getPresentationId();
+    if (message.data?.presentationId === presentationId && !isInPresentationMode() && !isPipActive()) {
+      removeGoLiveButton();
+      showStartPipButton(message.data.sessionCode, message.data.qrCode);
+    }
+  } else if (message.type === 'SESSION_ENDED') {
+    hideStartPipButton();
+    hideEndSessionButton();
+    const presentationId = getPresentationId();
+    if (presentationId && !isInPresentationMode() && !isPipActive()) {
+      initGoLiveButton(presentationId);
+    }
+  }
+});
 
 // Wait for page to be ready
 if (document.readyState === 'complete') {

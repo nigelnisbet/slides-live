@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { JoinSession } from './pages/JoinSession';
 import { PersonalSessionJoin } from './pages/PersonalSessionJoin';
+import { SessionEnded } from './pages/SessionEnded';
 import { WaitingScreen } from './pages/WaitingScreen';
 import { PresenterDashboard } from './pages/PresenterDashboard';
 import { PresenterCompact } from './pages/PresenterCompact';
@@ -22,11 +23,18 @@ const ActivityRouter: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Redirect to join page when session ends or disconnects (for attendee pages only)
+  // Redirect when session ends or disconnects (for attendee pages only).
+  // A real "the presenter ended it" event goes to the branded session-ended
+  // screen (the main viral surface - see docs/CURRENT_STATUS.md); simply
+  // never having joined goes to the plain join form.
   useEffect(() => {
     const isAttendeePage = location.pathname === '/waiting';
-    if (isAttendeePage && (sessionEnded || !sessionCode)) {
-      console.log('Session ended or disconnected, redirecting to join page');
+    if (!isAttendeePage) return;
+    if (sessionEnded) {
+      console.log('Session ended, redirecting to session-ended screen');
+      navigate('/session-ended', { replace: true });
+    } else if (!sessionCode) {
+      console.log('Disconnected with no session, redirecting to join page');
       navigate('/join', { replace: true });
     }
   }, [sessionEnded, sessionCode, navigate, location.pathname]);
@@ -38,6 +46,7 @@ const ActivityRouter: React.FC = () => {
       <Route path="/join/:code" element={<JoinSession />} />
       <Route path="/conv-tool/:name" element={<PersonalSessionJoin />} />
       <Route path="/waiting" element={<WaitingContent />} />
+      <Route path="/session-ended" element={<SessionEnded />} />
       <Route path="/presenter/:code" element={<PresenterDashboard />} />
       <Route path="/presenter-compact/:code" element={<PresenterCompact />} />
       <Route path="/builder" element={<ActivityBuilder />} />
@@ -53,11 +62,11 @@ const WaitingContent: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const navigate = useNavigate();
 
-  // Redirect to join if session ended
+  // Redirect to the session-ended screen if the presenter ended the session
   useEffect(() => {
     if (sessionEnded) {
-      console.log('Session ended in WaitingContent, redirecting to join');
-      navigate('/join', { replace: true });
+      console.log('Session ended in WaitingContent, redirecting to session-ended screen');
+      navigate('/session-ended', { replace: true });
     }
   }, [sessionEnded, navigate]);
 

@@ -39,10 +39,9 @@ slides-live/
 
 ## 🎓 Target Market
 
-- K-12 teachers (primary)
-- College instructors
-- Corporate trainers
-- Conference presenters
+**Go-to-market sequencing (updated June 2026 - see [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)):**
+1. **General presenter community (primary, first)** - conference speakers, corporate trainers, college instructors. Fewer IT/device restrictions than K-12, more likely to evangelize a slicker tool to peers (conferences are a built-in viral distribution channel).
+2. **K-12 teachers (secondary, pulled in by demand)** - bottom-up teacher requests once there's traction, backed by an easy district-admin allowlisting path for Chrome extension installs (many districts lock down extension installs via Google Workspace for Education policy).
 
 ## 🔗 Links
 
