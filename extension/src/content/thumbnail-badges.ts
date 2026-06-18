@@ -4,7 +4,8 @@
  * Each thumbnail's background group has a stable id of the form
  * "filmstrip-slide-{index}-...-bg" (discovered June 2026). We read the
  * presentation's activity config directly from Firebase (open read, no auth
- * needed) and overlay a small colored dot on any slide that has an activity.
+ * needed) and overlay a small colored label (POLL/QUIZ/TEXT/MSSG) on any
+ * slide that has an activity.
  *
  * Note: Slides enforces a Trusted Types CSP, so all DOM updates here use
  * createElement/replaceChildren - never innerHTML.
@@ -19,6 +20,17 @@ const ACTIVITY_COLORS: Record<string, string> = {
   'text-response': '#8b5cf6',
   announcement: '#10b981',
 };
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  poll: 'POLL',
+  quiz: 'QUIZ',
+  'word-cloud': 'CLOUD',
+  'text-response': 'TEXT',
+  announcement: 'MSSG',
+};
+
+const BADGE_WIDTH = 42;
+const BADGE_HEIGHT = 16;
 
 const LAYER_ID = 'slideslive-badge-layer';
 
@@ -53,29 +65,39 @@ function render() {
     const r = el.getBoundingClientRect();
     if (r.width === 0) return; // off-screen/virtualized thumbnail
 
-    const dot = document.createElement('div');
-    dot.style.position = 'fixed';
-    dot.style.left = `${r.x + r.width - 14}px`;
-    dot.style.top = `${r.y - 4}px`;
-    dot.style.width = '16px';
-    dot.style.height = '16px';
-    dot.style.borderRadius = '50%';
-    dot.style.background = ACTIVITY_COLORS[type] || '#999';
-    dot.style.border = '2px solid white';
-    dot.style.boxShadow = '0 1px 3px rgba(0,0,0,.4)';
-    dot.title = `${type} - click to edit`;
+    const badge = document.createElement('div');
+    badge.style.position = 'fixed';
+    badge.style.left = `${r.x + r.width - BADGE_WIDTH + 2}px`;
+    badge.style.top = `${r.y - 4}px`;
+    badge.style.width = `${BADGE_WIDTH}px`;
+    badge.style.height = `${BADGE_HEIGHT}px`;
+    badge.style.borderRadius = '4px';
+    badge.style.background = ACTIVITY_COLORS[type] || '#999';
+    badge.style.border = '1.5px solid white';
+    badge.style.boxShadow = '0 1px 3px rgba(0,0,0,.4)';
+    badge.style.display = 'flex';
+    badge.style.alignItems = 'center';
+    badge.style.justifyContent = 'center';
+    badge.style.color = '#fff';
+    badge.style.fontFamily = 'sans-serif';
+    badge.style.fontSize = '9px';
+    badge.style.fontWeight = 'bold';
+    badge.style.letterSpacing = '0.3px';
+    badge.style.lineHeight = '1';
+    badge.textContent = ACTIVITY_LABELS[type] || type.slice(0, 4).toUpperCase();
+    badge.title = `${type} - click to edit`;
     if (onBadgeClick) {
       // The layer itself stays pointer-events:none (so it doesn't block
-      // clicking the actual thumbnail underneath) - only the dot itself is
+      // clicking the actual thumbnail underneath) - only the badge itself is
       // clickable.
-      dot.style.pointerEvents = 'auto';
-      dot.style.cursor = 'pointer';
-      dot.onclick = (e) => {
+      badge.style.pointerEvents = 'auto';
+      badge.style.cursor = 'pointer';
+      badge.onclick = (e) => {
         e.stopPropagation();
         onBadgeClick?.(idx);
       };
     }
-    layer.appendChild(dot);
+    layer.appendChild(badge);
   });
 }
 

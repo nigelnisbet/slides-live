@@ -113,15 +113,30 @@ const WaitingContent: React.FC = () => {
     return null;
   }
 
+  const contentKey = showActivity
+    ? currentActivity.activityId || `${currentActivity.type}-${Date.now()}`
+    : 'waiting';
+
   return (
     <>
+      <style>{`
+        @keyframes slideslive-fade-in {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .slideslive-fade-in { animation: slideslive-fade-in 0.35s ease-out; }
+      `}</style>
       <SlidesLiveLogo />
       {sessionCode && <SessionCodeBadge code={sessionCode} />}
 
-      {/* Show either activity or waiting screen */}
-      {showActivity ? activityComponent : (
-        <WaitingScreen onShowFeedbackModal={() => setShowFeedbackModal(true)} />
-      )}
+      {/* Show either activity or waiting screen - keyed so switching
+          activities (or back to waiting) re-triggers the fade-in instead
+          of hard-cutting between screens */}
+      <div key={contentKey} className="slideslive-fade-in">
+        {showActivity ? activityComponent : (
+          <WaitingScreen onShowFeedbackModal={() => setShowFeedbackModal(true)} />
+        )}
+      </div>
 
       {/* Floating feedback button when activity is showing */}
       {showActivity && feedbackEnabled && sessionCode && participantId && (

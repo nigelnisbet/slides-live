@@ -31,9 +31,20 @@ interface LiveState {
   participantCount: number;
   currentActivity: any | null;
   aggregatedResults: any | null;
+  // text-response answers are plain strings, which the existing
+  // aggregation logic (FirebaseContext.tsx's incrementResponseArray) only
+  // knows how to bucket for array/number answers (poll/quiz shapes) - for
+  // strings it silently no-ops, so the actual text never reaches
+  // aggregatedResults. Read the raw per-participant responses instead.
+  textResponses: string[];
 }
 
-const state: LiveState = { participantCount: 0, currentActivity: null, aggregatedResults: null };
+const state: LiveState = {
+  participantCount: 0,
+  currentActivity: null,
+  aggregatedResults: null,
+  textResponses: [],
+};
 
 let canvas: HTMLCanvasElement | null = null;
 let ctx: CanvasRenderingContext2D | null = null;
@@ -139,6 +150,26 @@ function drawExpanded() {
   ctx.font = '16px sans-serif';
   ctx.fillStyle = '#666';
   ctx.fillText(`${total} response${total === 1 ? '' : 's'}`, 20, 88);
+
+  if (activity.type === 'text-response') {
+    ctx.font = '15px sans-serif';
+    ctx.fillStyle = '#111';
+    const lineHeight = 26;
+    let y = 130;
+    // newest first, most relevant to a presenter glancing live
+    const recent = state.textResponses.slice(-6).reverse();
+    for (const response of recent) {
+      if (y > CANVAS_SIZE - 30) break;
+      const text = response.length > 60 ? response.slice(0, 57) + '...' : response;
+      ctx.fillText(`"${text}"`, 20, y);
+      y += lineHeight;
+    }
+    if (!recent.length) {
+      ctx.fillStyle = '#999';
+      ctx.fillText('Waiting for responses...', 20, y);
+    }
+    return;
+  }
 
   const options: string[] = activity.options || [];
   const counts: number[] = state.aggregatedResults?.responses || [];
@@ -248,13 +279,40 @@ export async function startPipStats(sessionCode: string, qrCodeUrl?: string): Pr
       ? Object.values(participants).filter((p: any) => p?.isActive).length
       : 0;
   });
+
+  // aggregatedResults/responses are scoped to whichever activityId is
+  // current, re-subscribed fresh every time the activity actually changes
+  // (not just whenever those paths happen to update on their own). Without
+  // this, switching activities left the PREVIOUS activity's results on
+  // screen until someone happened to submit a new response - nothing
+  // forced a re-read for the new activity in the meantime.
+  let lastActivityId: string | null = null;
+  let unsubscribeAggregated: (() => void) | null = null;
+  let unsubscribeResponses: (() => void) | null = null;
+
   onValue(ref(database, `sessions/${sessionCode}/currentActivity`), (snap) => {
     state.currentActivity = snap.val();
-  });
-  onValue(ref(database, `sessions/${sessionCode}/aggregatedResults`), (snap) => {
-    const all = snap.val() || {};
-    const activityId = state.currentActivity?.activityId;
-    state.aggregatedResults = activityId ? all[activityId] : null;
+    const activityId = state.currentActivity?.activityId ?? null;
+    if (activityId === lastActivityId) return;
+    lastActivityId = activityId;
+
+    unsubscribeAggregated?.();
+    unsubscribeResponses?.();
+    state.aggregatedResults = null;
+    state.textResponses = [];
+    if (!activityId) return;
+
+    unsubscribeAggregated = onValue(ref(database, `sessions/${sessionCode}/aggregatedResults/${activityId}`), (s) => {
+      state.aggregatedResults = s.val();
+    });
+    unsubscribeResponses = onValue(ref(database, `sessions/${sessionCode}/responses/${activityId}`), (s) => {
+      const forActivity = s.val();
+      state.textResponses = forActivity
+        ? (Object.values(forActivity) as any[])
+            .map((r) => r?.answer)
+            .filter((a): a is string => typeof a === 'string')
+        : [];
+    });
   });
 }
 
@@ -291,6 +349,16 @@ function makeButton(
 const GO_LIVE_BUTTON_ID = 'slideslive-go-live-btn';
 const TRIGGER_BUTTON_ID = 'slideslive-start-pip-btn';
 const END_SESSION_BUTTON_ID = 'slideslive-end-session-btn';
+
+// Tried auto-clicking Slides' own "Start slideshow" button
+// (#punch-start-presentation-left) right after PiP starts, to save the
+// presenter a second click. Confirmed (live test, June 2026) that it
+// doesn't work: by the time we get there we're a couple of awaits removed
+// from the original click, so the browser's user-activation window for
+// the Fullscreen API has already expired, and Slides' own click handler
+// silently can't get fullscreen permission. No clean way around this
+// without breaking the "PiP must start before fullscreen" ordering that
+// already matters - not re-attempting.
 
 /** Default, always-visible button: creates a session and starts PiP in one click. */
 export function initGoLiveButton(presentationId: string) {

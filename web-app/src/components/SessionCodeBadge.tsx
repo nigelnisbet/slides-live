@@ -2,7 +2,6 @@ import React from 'react';
 
 // SlidesLive brand colors
 const primaryBlue = '#3b82f6';
-const accentGreen = '#10b981';
 
 interface SessionCodeBadgeProps {
   code: string;
@@ -13,14 +12,14 @@ export const SessionCodeBadge: React.FC<SessionCodeBadgeProps> = ({ code }) => {
     <div
       style={{
         position: 'fixed',
-        top: '12px',
-        right: '12px',
+        top: '20px',
+        right: '20px',
         zIndex: 1000,
-        backgroundColor: primaryBlue,
-        color: 'white',
-        padding: '8px 16px',
-        borderRadius: '8px',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        padding: '10px 16px',
+        borderRadius: '12px',
         boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        backdropFilter: 'blur(10px)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -33,18 +32,18 @@ export const SessionCodeBadge: React.FC<SessionCodeBadgeProps> = ({ code }) => {
           fontWeight: 600,
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
-          opacity: 0.9,
+          color: '#888',
         }}
       >
         Session Code
       </div>
       <div
         style={{
-          fontSize: '20px',
-          fontWeight: 'bold',
+          fontSize: '18px',
+          fontWeight: 700,
           fontFamily: 'monospace',
           letterSpacing: '2px',
-          color: accentGreen,
+          color: primaryBlue,
         }}
       >
         {code}
