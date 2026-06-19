@@ -56,11 +56,12 @@ function ensureLayer(): HTMLDivElement {
 function render() {
   const layer = ensureLayer();
   layer.replaceChildren();
-  document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]').forEach((el) => {
-    const m = el.id.match(/^filmstrip-slide-(\d+)-/);
-    if (!m) return;
-    const idx = parseInt(m[1], 10);
-    const type = activitiesByIndex[idx];
+  // Use DOM order (forEach index) not the numeric prefix in the element ID.
+  // When Google Slides inserts a slide it may assign the same numeric prefix
+  // to the new element before renumbering others, causing duplicate badges.
+  // DOM order always reflects current visual slide order immediately.
+  document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]').forEach((el, domIndex) => {
+    const type = activitiesByIndex[domIndex];
     if (!type) return;
     const r = el.getBoundingClientRect();
     if (r.width === 0) return; // off-screen/virtualized thumbnail
@@ -94,7 +95,7 @@ function render() {
       badge.style.cursor = 'pointer';
       badge.onclick = (e) => {
         e.stopPropagation();
-        onBadgeClick?.(idx);
+        onBadgeClick?.(domIndex);
       };
     }
     layer.appendChild(badge);

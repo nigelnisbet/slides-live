@@ -24,8 +24,16 @@
 import { ref, onValue } from 'firebase/database';
 import { database } from './firebase-client';
 
-const CANVAS_SIZE = 500;
-const COMPACT_THRESHOLD = 320; // px - below this, show the compact view
+const CANVAS_SIZE = 500; // logical drawing units (0–500 coordinate space)
+const SCALE = 4;         // render at 4× density for crispness - applied as
+                         // ctx.scale(SCALE,SCALE) once so ALL draw functions
+                         // use the 0–CANVAS_SIZE space unchanged.
+                         // Main cost is video encoding (captureStream), not
+                         // canvas drawing - bump back to SCALE=2 and fps=15
+                         // if encoding overhead becomes noticeable, or if
+                         // we add animations (word cloud etc) that need
+                         // higher throughput.
+const COMPACT_THRESHOLD = 320; // CSS px of the PiP window (not canvas pixels)
 
 interface LiveState {
   participantCount: number;
@@ -58,10 +66,20 @@ let endingIntentionally = false;
 
 function drawBranding() {
   if (!ctx) return;
-  ctx.fillStyle = '#3b82f6';
-  ctx.font = 'bold 16px sans-serif';
+  // Two-tone wordmark centred along the bottom - call this LAST in each
+  // draw function so it sits on top of all other content.
+  ctx.save();
+  ctx.font = 'bold 28px sans-serif';
   ctx.textAlign = 'left';
-  ctx.fillText('slidesLive', 16, 26);
+  const slidesW = ctx.measureText('slides').width;
+  const liveW = ctx.measureText('Live').width;
+  const startX = (CANVAS_SIZE - slidesW - liveW) / 2;
+  const y = CANVAS_SIZE - 14;
+  ctx.fillStyle = '#374151';
+  ctx.fillText('slides', startX, y);
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillText('Live', startX + slidesW, y);
+  ctx.restore();
 }
 
 // Announcements are presenter-broadcast text with no audience response to
@@ -94,49 +112,100 @@ function drawJoinPrompt(compact: boolean) {
 
   ctx.font = '16px sans-serif';
   ctx.fillStyle = '#666';
-  const y = compact ? 460 : 430;
+  const y = compact ? 438 : 415;
   ctx.fillText(`${state.participantCount} connected`, CANVAS_SIZE / 2, y);
+}
+
+// inward=false → right triangle, apex at corner pointing outward (expand)
+// inward=true  → right triangle, apex pointing toward centre (shrink)
+// Both triangles use the same three points of a PAD×ARM rectangle at each
+// corner - just opposite diagonals, so the shape is identical but flipped.
+function drawExpandHint(inward = false) {
+  if (!ctx) return;
+  ctx.save();
+  ctx.fillStyle = '#3b82f6';
+  const ARM = 36;
+  // Expand (outward): triangles sit just inside the corner so the apex
+  // is visible pointing toward the edge.
+  // Shrink (inward): negative PAD pushes the base vertices off-canvas -
+  // they clip at the window edge, making it obvious you drag from the very
+  // edge itself, with the apex pointing inward toward centre.
+  const PAD = inward ? -3 : 6;
+  const corners: [number, number, number, number][] = [
+    [PAD,               PAD,               1,  1],
+    [CANVAS_SIZE - PAD, PAD,              -1,  1],
+    [PAD,               CANVAS_SIZE - PAD,  1, -1],
+    [CANVAS_SIZE - PAD, CANVAS_SIZE - PAD, -1, -1],
+  ];
+  corners.forEach(([ax, ay, idx, idy]) => {
+    ctx!.beginPath();
+    if (!inward) {
+      // Apex at (ax,ay) = the corner → points outward
+      ctx!.moveTo(ax, ay);
+      ctx!.lineTo(ax + idx * ARM, ay);
+      ctx!.lineTo(ax, ay + idy * ARM);
+    } else {
+      // Apex at (ax+idx*ARM, ay+idy*ARM) = inner point → points toward centre
+      ctx!.moveTo(ax + idx * ARM, ay);
+      ctx!.lineTo(ax, ay + idy * ARM);
+      ctx!.lineTo(ax + idx * ARM, ay + idy * ARM);
+    }
+    ctx!.closePath();
+    ctx!.fill();
+  });
+  ctx.restore();
 }
 
 function drawCompact() {
   if (!ctx) return;
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  drawBranding();
+
+  ctx.textAlign = 'center';
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillText('drag to expand', CANVAS_SIZE / 2, 30);
 
   const activity = state.currentActivity;
   if (showJoinPrompt(activity)) {
     drawJoinPrompt(true);
+    drawExpandHint(false);
+    drawBranding();
     return;
   }
 
-  ctx.textAlign = 'center';
   ctx.font = 'bold 24px sans-serif';
   ctx.fillStyle = '#111';
-  ctx.fillText(String(activity.type).toUpperCase(), CANVAS_SIZE / 2, 180);
+  ctx.fillText(String(activity.type).toUpperCase(), CANVAS_SIZE / 2, 200);
 
   const count = state.aggregatedResults?.totalResponses ?? 0;
-  ctx.font = 'bold 56px sans-serif';
-  ctx.fillText(String(count), CANVAS_SIZE / 2, 260);
+  ctx.font = 'bold 64px sans-serif';
+  ctx.fillText(String(count), CANVAS_SIZE / 2, 295);
 
-  ctx.font = '18px sans-serif';
+  ctx.font = '20px sans-serif';
   ctx.fillStyle = '#666';
-  ctx.fillText('answered', CANVAS_SIZE / 2, 300);
+  ctx.fillText('answered', CANVAS_SIZE / 2, 335);
 
-  ctx.font = '14px sans-serif';
-  ctx.fillStyle = '#999';
-  ctx.fillText('(drag corner to expand)', CANVAS_SIZE / 2, 470);
+  // outward-pointing triangles at corners = drag corner outward to expand
+  drawExpandHint(false);
+  drawBranding();
 }
 
 function drawExpanded() {
   if (!ctx) return;
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-  drawBranding();
+
+  ctx.textAlign = 'center';
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillText('drag to shrink', CANVAS_SIZE / 2, 30);
 
   const activity = state.currentActivity;
   if (showJoinPrompt(activity)) {
     drawJoinPrompt(false);
+    drawExpandHint(true);
+    drawBranding();
     return;
   }
 
@@ -149,17 +218,18 @@ function drawExpanded() {
   const total = state.aggregatedResults?.totalResponses ?? 0;
   ctx.font = '16px sans-serif';
   ctx.fillStyle = '#666';
-  ctx.fillText(`${total} response${total === 1 ? '' : 's'}`, 20, 88);
+  ctx.fillText(`${total} response${total === 1 ? '' : 's'}`, 20, 78);
 
   if (activity.type === 'text-response') {
     ctx.font = '15px sans-serif';
     ctx.fillStyle = '#111';
     const lineHeight = 26;
-    let y = 130;
+    let y = 120;
     // newest first, most relevant to a presenter glancing live
-    const recent = state.textResponses.slice(-6).reverse();
+    const all = state.textResponses;
+    const recent = all.slice(-6).reverse();
     for (const response of recent) {
-      if (y > CANVAS_SIZE - 30) break;
+      if (y > CANVAS_SIZE - 55) break;
       const text = response.length > 60 ? response.slice(0, 57) + '...' : response;
       ctx.fillText(`"${text}"`, 20, y);
       y += lineHeight;
@@ -167,7 +237,13 @@ function drawExpanded() {
     if (!recent.length) {
       ctx.fillStyle = '#999';
       ctx.fillText('Waiting for responses...', 20, y);
+    } else if (all.length > 6) {
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = '13px sans-serif';
+      ctx.fillText(`+ ${all.length - 6} more`, 20, CANVAS_SIZE - 55);
     }
+    drawExpandHint(true);
+    drawBranding();
     return;
   }
 
@@ -177,8 +253,8 @@ function drawExpanded() {
   const barColors = ['#3b82f6', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444'];
 
   options.forEach((opt, i) => {
-    const y = 130 + i * 70;
-    if (y > CANVAS_SIZE - 40) return;
+    const y = 115 + i * 70;
+    if (y > CANVAS_SIZE - 55) return;
     ctx!.fillStyle = '#111';
     ctx!.font = '16px sans-serif';
     ctx!.fillText(`${opt}: ${counts[i] || 0}`, 20, y);
@@ -186,11 +262,19 @@ function drawExpanded() {
     ctx!.fillStyle = barColors[i % barColors.length];
     ctx!.fillRect(20, y + 10, Math.max(2, barW), 26);
   });
+
+  drawExpandHint(true); // inward-pointing triangles = drag corner inward to shrink
+  drawBranding();
 }
 
+let _loggedMode = false;
 function draw() {
   if (!drawing) return;
   const width = pipWindow?.width || CANVAS_SIZE;
+  if (!_loggedMode && pipWindow) {
+    console.log('[SlidesLive PiP] pipWindow.width:', width, '— mode:', width < COMPACT_THRESHOLD ? 'COMPACT' : 'EXPANDED');
+    _loggedMode = true;
+  }
   if (width < COMPACT_THRESHOLD) drawCompact();
   else drawExpanded();
   requestAnimationFrame(draw);
@@ -219,11 +303,15 @@ export async function startPipStats(sessionCode: string, qrCodeUrl?: string): Pr
   }
 
   canvas = document.createElement('canvas');
-  canvas.width = CANVAS_SIZE;
-  canvas.height = CANVAS_SIZE;
+  canvas.width = CANVAS_SIZE * SCALE;   // physical pixel buffer at 4× density
+  canvas.height = CANVAS_SIZE * SCALE;
   canvas.style.display = 'none';
   document.body.appendChild(canvas);
   ctx = canvas.getContext('2d');
+  // Scale the context once so ALL draw calls use the 0–CANVAS_SIZE
+  // logical space unchanged. Setting canvas.width/height resets any
+  // existing transform, so this must come AFTER the size assignment.
+  ctx?.scale(SCALE, SCALE);
 
   video = document.createElement('video');
   video.muted = true;
@@ -234,22 +322,14 @@ export async function startPipStats(sessionCode: string, qrCodeUrl?: string): Pr
   drawing = true;
   draw();
 
-  const stream = (canvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream }).captureStream(15);
+  const stream = (canvas as HTMLCanvasElement & { captureStream(fps?: number): MediaStream }).captureStream(30);
   video.srcObject = stream;
   await video.play();
 
-  // Doesn't remove the native timeline/CC/LIVE badge (that's fixed browser
-  // chrome for any non-seekable PiP stream), but gives the overlay a proper
-  // title instead of a generic/blank one - makes it read as intentional
-  // branding rather than a stray video window.
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'Live Stats',
-      artist: 'slidesLive',
-    });
-  }
 
-  pipWindow = await video.requestPictureInPicture();
+  // Size hint - Chrome may or may not respect this (not yet part of the
+  // official spec), but it's harmless to pass and works in recent builds.
+  pipWindow = await (video as any).requestPictureInPicture({ width: 260 });
 
   video.addEventListener('leavepictureinpicture', () => {
     pipWindow = null;
@@ -361,7 +441,7 @@ const END_SESSION_BUTTON_ID = 'slideslive-end-session-btn';
 // already matters - not re-attempting.
 
 /** Default, always-visible button: creates a session and starts PiP in one click. */
-export function initGoLiveButton(presentationId: string) {
+export function initGoLiveButton(presentationId: string, getCurrentSlideIndex: () => number) {
   if (document.getElementById(GO_LIVE_BUTTON_ID) || document.getElementById(TRIGGER_BUTTON_ID)) return;
 
   const btn = makeButton(GO_LIVE_BUTTON_ID, '🔴 Go Live', { background: '#10b981', align: 'center' });
@@ -369,7 +449,12 @@ export function initGoLiveButton(presentationId: string) {
     btn.disabled = true;
     btn.textContent = 'Going live...';
     try {
-      const response = await chrome.runtime.sendMessage({ type: 'CREATE_SESSION', presentationId });
+      // Without passing the current slide along, the session always starts
+      // as if slide 1 were showing - an attendee joining while the
+      // presenter is already on, say, slide 3 would see "connected"
+      // instead of slide 3's activity until the next slide change.
+      const slideIndex = getCurrentSlideIndex();
+      const response = await chrome.runtime.sendMessage({ type: 'CREATE_SESSION', presentationId, slideIndex });
       if (!response?.success) throw new Error(response?.error || 'Failed to create session');
       await startPipStats(response.sessionCode, response.qrCode);
       btn.remove();

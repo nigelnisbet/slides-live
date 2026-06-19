@@ -5,7 +5,7 @@
  * Works in edit mode by watching the filmstrip.
  */
 import { initThumbnailBadges } from './thumbnail-badges';
-import { initActivityEditor, openActivityEditorForSlide } from './activity-editor';
+import { initActivityEditor, openActivityEditorForSlide, syncActivityPositions } from './activity-editor';
 import {
   initGoLiveButton,
   removeGoLiveButton,
@@ -77,15 +77,15 @@ function getSlideIndexFromFilmstripIds(): number {
   const urlSlideId = getSlideIdFromUrl();
   if (!urlSlideId || urlSlideId === 'p') return urlSlideId === 'p' ? 0 : -1;
 
-  const groups = document.querySelectorAll('g[id^="filmstrip-slide-"]');
-  for (let i = 0; i < groups.length; i++) {
-    const el = groups[i];
-    if (el.id.includes(urlSlideId)) {
-      const m = el.id.match(/^filmstrip-slide-(\d+)-/);
-      if (m) return parseInt(m[1], 10);
-    }
-  }
-  return -1;
+  // Use DOM order (forEach index) not the numeric prefix in the element ID —
+  // the prefix may not update when slides are inserted/reordered, but DOM
+  // order always reflects current visual slide order immediately.
+  const bgs = document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]');
+  let found = -1;
+  bgs.forEach((el, domIndex) => {
+    if (found < 0 && el.id.includes(urlSlideId)) found = domIndex;
+  });
+  return found;
 }
 
 // Get slide index from filmstrip by finding selected thumbnail
@@ -292,8 +292,30 @@ function startPolling() {
   console.log('[Google Slides Extension] Started polling');
 }
 
+// Track filmstrip structure (slide count + order) to detect inserts, deletes,
+// and reorders. The signature is the ordered list of filmstrip bg element IDs,
+// which encode both the slide index and the stable slide object ID.
+let filmstripSignature = '';
+let syncDebounceTimer: number | null = null;
+
+function checkFilmstripStructure(presentationId: string) {
+  const sig = Array.from(
+    document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]')
+  ).map(el => el.id).join('|');
+
+  if (sig === filmstripSignature || !sig) return;
+  filmstripSignature = sig;
+
+  // Debounce: wait for Slides to finish animating the DOM before reading positions
+  if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+  syncDebounceTimer = window.setTimeout(() => {
+    syncDebounceTimer = null;
+    syncActivityPositions(presentationId).catch(() => {});
+  }, 800);
+}
+
 // Set up observers
-function setupObservers() {
+function setupObservers(presentationId: string) {
   // URL changes
   window.addEventListener('hashchange', () => {
     console.log('[Google Slides Extension] Hash changed');
@@ -326,6 +348,7 @@ function setupObservers() {
 
       const observer = new MutationObserver(() => {
         setTimeout(checkForChanges, 50);
+        checkFilmstripStructure(presentationId);
       });
 
       observer.observe(filmstrip, {
@@ -388,7 +411,7 @@ function init() {
       reportSlideChange(slideInfo);
     }
 
-    setupObservers();
+    setupObservers(presentationId);
 
     // On-slide features only make sense in the editor (filmstrip + slide
     // canvas), not in Present mode.
@@ -412,7 +435,7 @@ function init() {
       if (response?.connected && response.presentationId === presentationId && !isPipActive()) {
         showStartPipButton(response.sessionCode, response.qrCode);
       } else if (!isPipActive()) {
-        initGoLiveButton(presentationId);
+        initGoLiveButton(presentationId, detectCurrentSlideIndex);
       }
     });
   }
@@ -445,7 +468,7 @@ chrome.runtime.onMessage.addListener((message) => {
     hideEndSessionButton();
     const presentationId = getPresentationId();
     if (presentationId && !isInPresentationMode() && !isPipActive()) {
-      initGoLiveButton(presentationId);
+      initGoLiveButton(presentationId, detectCurrentSlideIndex);
     }
   }
 });

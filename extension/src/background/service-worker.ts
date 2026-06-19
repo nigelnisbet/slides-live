@@ -152,7 +152,7 @@ function setupParticipantListener(sessionCode: string) {
 }
 
 // Create a new session
-async function createSession(presentationId: string) {
+async function createSession(presentationId: string, currentSlideIndex = 0) {
   try {
     console.log('[SlidesLive] Creating session for:', presentationId);
 
@@ -191,6 +191,15 @@ async function createSession(presentationId: string) {
 
     console.log('[SlidesLive] Loaded activities:', activities.length);
 
+    // Look up whatever activity belongs to the slide that's already showing
+    // right now - without this, a presenter going live midway through a
+    // deck (not on slide 1) would see "connected" on attendee devices
+    // until the next slide change, even though the current slide already
+    // has an activity attached.
+    const initialActivity = activities.find(
+      (a: any) => a.slidePosition?.indexh === currentSlideIndex && (a.slidePosition?.indexv || 0) === 0
+    );
+
     // Create session in Firebase (same structure as slides.com extension)
     await set(ref(database, `sessions/${code}`), {
       id: sessionId,
@@ -200,8 +209,8 @@ async function createSession(presentationId: string) {
       status: 'active',
       createdAt: Date.now(),
       expiresAt: Date.now() + (24 * 60 * 60 * 1000), // 24 hours
-      currentSlide: { indexh: 0, indexv: 0, timestamp: Date.now() },
-      currentActivity: null,
+      currentSlide: { indexh: currentSlideIndex, indexv: 0, timestamp: Date.now() },
+      currentActivity: initialActivity ? { ...initialActivity.config, activityId: initialActivity.activityId } : null,
       activities: activities
     });
 
@@ -366,7 +375,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   switch (message.type) {
     case 'CREATE_SESSION':
-      createSession(message.presentationId).then(sendResponse);
+      createSession(message.presentationId, message.slideIndex || 0).then(sendResponse);
       return true; // Async response
 
     case 'END_SESSION':

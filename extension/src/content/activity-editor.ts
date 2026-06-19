@@ -150,10 +150,71 @@ function extractSlideTextContent(): SlideTextExtraction | null {
 }
 
 interface ActivityConfigEntry {
-  slidePosition: { indexh: number; indexv: number; timestamp: number };
+  slidePosition: { indexh: number; indexv: number; timestamp: number; slideObjectId?: string };
   activityType: string;
   activityId: string;
   config: Record<string, unknown>;
+}
+
+// Extract the stable Google Slides object ID for a slide from the filmstrip DOM.
+// The bg element id is "filmstrip-slide-{N}-{objectId}-bg" where N is 0-based index.
+// This objectId is stable across slide insertions/deletions/reorders, unlike the index.
+function getFilmstripObjectId(slideIndex: number): string | null {
+  // Use DOM order (querySelectorAll index), not the numeric prefix in the ID.
+  const bgs = document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]');
+  const el = bgs[slideIndex];
+  if (!el) return null;
+  const m = el.id.match(/^filmstrip-slide-\d+-(.+)-bg$/);
+  return m ? m[1] : null;
+}
+
+// Build a map of slideObjectId → current slide index from the live filmstrip DOM.
+function buildObjectIdIndexMap(): Map<string, number> {
+  const map = new Map<string, number>();
+  // Use DOM order (forEach index) not the numeric prefix in the element ID —
+  // the prefix may not update immediately when slides are inserted/reordered.
+  document.querySelectorAll('g[id^="filmstrip-slide-"][id$="-bg"]').forEach((el, domIndex) => {
+    const m = el.id.match(/^filmstrip-slide-\d+-(.+)-bg$/);
+    if (m) map.set(m[1], domIndex);
+  });
+  return map;
+}
+
+// Re-index all activities whose slide was moved, and remove any whose slide was
+// deleted. Runs after filmstrip mutations. Badge refresh is automatic because
+// thumbnail-badges.ts has a Firebase onValue listener on the same config path.
+export async function syncActivityPositions(presentationId: string): Promise<void> {
+  const objectIdMap = buildObjectIdIndexMap();
+  if (objectIdMap.size === 0) return; // filmstrip not loaded yet
+
+  const configRef = ref(database, `presentations/${presentationId}/config`);
+  const snap = await get(configRef);
+  if (!snap.exists()) return;
+
+  const existing = snap.val();
+  const activities: ActivityConfigEntry[] = existing.activities || [];
+  let changed = false;
+
+  const updated = activities
+    .map(activity => {
+      const slideObjectId = activity.slidePosition?.slideObjectId;
+      if (!slideObjectId) return activity; // pre-fix activity without objectId — leave alone
+
+      const newIndex = objectIdMap.get(slideObjectId);
+      if (newIndex === undefined) {
+        // The slide this activity was on has been deleted — remove the activity
+        changed = true;
+        return null;
+      }
+      if (newIndex === activity.slidePosition.indexh) return activity; // no change needed
+      changed = true;
+      return { ...activity, slidePosition: { ...activity.slidePosition, indexh: newIndex } };
+    })
+    .filter((a): a is ActivityConfigEntry => a !== null);
+
+  if (changed) {
+    await set(configRef, { ...existing, activities: updated, updatedAt: Date.now() });
+  }
 }
 
 async function loadExistingActivity(
@@ -216,7 +277,12 @@ async function saveActivity(
   }
 
   const newActivity: ActivityConfigEntry = {
-    slidePosition: { indexh: slideIndex, indexv: 0, timestamp: Date.now() },
+    slidePosition: {
+      indexh: slideIndex,
+      indexv: 0,
+      timestamp: Date.now(),
+      slideObjectId: getFilmstripObjectId(slideIndex) ?? undefined,
+    },
     activityType: type,
     activityId,
     config,

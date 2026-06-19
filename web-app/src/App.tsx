@@ -16,6 +16,8 @@ import { SessionCodeBadge } from './components/SessionCodeBadge';
 import { FeedbackModal } from './components/FeedbackModal';
 import { FloatingFeedbackButton } from './components/FloatingFeedbackButton';
 import { SlidesLiveLogo } from './components/SlidesLiveLogo';
+import { AboutPage } from './pages/AboutPage';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { SocketProvider, useSocket } from './contexts/FirebaseContext';
 
 const ActivityRouter: React.FC = () => {
@@ -41,7 +43,9 @@ const ActivityRouter: React.FC = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/join" replace />} />
+      <Route path="/" element={<Navigate to="/about" replace />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/join" element={<JoinSession />} />
       <Route path="/join/:code" element={<JoinSession />} />
       <Route path="/conv-tool/:name" element={<PersonalSessionJoin />} />
@@ -51,7 +55,7 @@ const ActivityRouter: React.FC = () => {
       <Route path="/presenter-compact/:code" element={<PresenterCompact />} />
       <Route path="/builder" element={<ActivityBuilder />} />
       <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="*" element={<Navigate to="/join" replace />} />
+      <Route path="*" element={<Navigate to="/about" replace />} />
     </Routes>
   );
 };
