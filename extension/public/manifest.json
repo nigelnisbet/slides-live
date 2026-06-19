@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SlidesLive - Interactive Google Slides",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Add live polls, quizzes, and Q&A to your Google Slides presentations. Students join via QR code!",
   "permissions": [
     "activeTab",

@@ -24,6 +24,7 @@
 import { ref, onValue } from 'firebase/database';
 import { database } from './firebase-client';
 
+const BUILD = 'v7'; // bump this whenever debugging to confirm the new build loaded
 const CANVAS_SIZE = 500; // logical drawing units (0–500 coordinate space)
 const SCALE = 4;         // render at 4× density for crispness - applied as
                          // ctx.scale(SCALE,SCALE) once so ALL draw functions
@@ -79,6 +80,11 @@ function drawBranding() {
   ctx.fillText('slides', startX, y);
   ctx.fillStyle = '#3b82f6';
   ctx.fillText('Live', startX + slidesW, y);
+  // Build tag — confirm which version is loaded during debugging
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#d1d5db';
+  ctx.fillText(BUILD, 6, CANVAS_SIZE - 4);
   ctx.restore();
 }
 
@@ -326,9 +332,6 @@ export async function startPipStats(sessionCode: string, qrCodeUrl?: string): Pr
   video.srcObject = stream;
   await video.play();
 
-
-  // Size hint - Chrome may or may not respect this (not yet part of the
-  // official spec), but it's harmless to pass and works in recent builds.
   pipWindow = await (video as any).requestPictureInPicture({ width: 260 });
 
   video.addEventListener('leavepictureinpicture', () => {
