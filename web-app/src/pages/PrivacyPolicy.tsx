@@ -54,7 +54,7 @@ export const PrivacyPolicy: React.FC = () => {
         </Section>
 
         <Section title="Email Addresses">
-          <p>If you voluntarily submit your email address via our "Stay in the loop" form (on the landing page or the session-ended screen), we store it in Firebase solely to send product updates and early access notifications. We will never sell, rent, or share your email with third parties. You can request deletion at any time by emailing <a href="mailto:nigelnisbet@gmail.com" style={{ color: primaryBlue }}>nigelnisbet@gmail.com</a>.</p>
+          <p>If you voluntarily submit your email address via our "Stay in the loop" form (on the landing page or the session-ended screen), we store it in Firebase solely to send product updates and early access notifications. We will never sell, rent, or share your email with third parties. You can request deletion at any time by emailing <a href="mailto:slidesliveadmin@gmail.com" style={{ color: primaryBlue }}>slidesliveadmin@gmail.com</a>.</p>
         </Section>
 
         <Section title="Firebase & Third Parties">
@@ -77,7 +77,7 @@ export const PrivacyPolicy: React.FC = () => {
         </Section>
 
         <Section title="Your Rights">
-          <p>You can request deletion of any data associated with your presentation ID or email address by contacting us at <a href="mailto:nigelnisbet@gmail.com" style={{ color: primaryBlue }}>nigelnisbet@gmail.com</a>. We will respond within 30 days.</p>
+          <p>You can request deletion of any data associated with your presentation ID or email address by contacting us at <a href="mailto:slidesliveadmin@gmail.com" style={{ color: primaryBlue }}>slidesliveadmin@gmail.com</a>. We will respond within 30 days.</p>
         </Section>
 
         <Section title="Changes to This Policy">
@@ -85,7 +85,7 @@ export const PrivacyPolicy: React.FC = () => {
         </Section>
 
         <Section title="Contact">
-          <p>Questions or requests? Email <a href="mailto:nigelnisbet@gmail.com" style={{ color: primaryBlue }}>nigelnisbet@gmail.com</a>.</p>
+          <p>Questions or requests? Email <a href="mailto:slidesliveadmin@gmail.com" style={{ color: primaryBlue }}>slidesliveadmin@gmail.com</a>.</p>
         </Section>
 
       </div>
